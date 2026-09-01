@@ -7,12 +7,12 @@ from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 
 load_dotenv()
+
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 AZURE_CONN_STR = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 AI_ENDPOINT = os.getenv("AZURE_AI_ENDPOINT")
 AI_KEY = os.getenv("AZURE_AI_KEY")
 
-# Credenciales de Azure SQL Database (las añadiremos al .env)
 SQL_SERVER = os.getenv("AZURE_SQL_SERVER")
 SQL_DATABASE = os.getenv("AZURE_SQL_DATABASE")
 SQL_USER = os.getenv("AZURE_SQL_USER")
@@ -38,7 +38,7 @@ def get_sql_connection():
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "¡Hola! Gestor de Mi Tosta operativo con Azure SQL y Cloud AI.")
+    bot.reply_to(message, "¡Hola! Gestor de Mi Tosta operativo con Azure SQL y Cloud AI. Sube tu documento para almacenarlo en la base de datos.")
 
 @bot.message_handler(content_types=['photo', 'document'])
 def handle_file(message):
@@ -73,8 +73,11 @@ def handle_file(message):
             vendor_name = invoice.fields.get("VendorName")
             vendor_value = vendor_name.value if vendor_name else "Proveedor Desconocido"
             
+            # Extraer solo el valor numérico del total
             total_field = invoice.fields.get("InvoiceTotal")
-            total_value = total_field.value if total_field else 0.0
+            total_value = 0.0
+            if total_field and total_field.value:
+                total_value = getattr(total_field.value, 'amount', total_field.value)
             
             items_field = invoice.fields.get("Items")
             parsed_items = []
@@ -84,8 +87,18 @@ def handle_file(message):
                     item_fields = item.value
                     description = item_fields.get("Description").value if item_fields.get("Description") else f"Artículo {idx+1}"
                     quantity = item_fields.get("Quantity").value if item_fields.get("Quantity") else 1.0
-                    price = item_fields.get("UnitPrice").value if item_fields.get("UnitPrice") else 0.0
-                    total_price = item_fields.get("Amount").value if item_fields.get("Amount") else (quantity * price)
+                    
+                    # Extraer solo el valor numérico del precio unitario
+                    price_field = item_fields.get("UnitPrice")
+                    price = 0.0
+                    if price_field and price_field.value:
+                        price = getattr(price_field.value, 'amount', price_field.value)
+                        
+                    # Extraer solo el valor numérico del total de la línea
+                    amount_field = item_fields.get("Amount")
+                    total_price = (quantity * price)
+                    if amount_field and amount_field.value:
+                        total_price = getattr(amount_field.value, 'amount', amount_field.value)
                     
                     parsed_items.append({
                         "descripcion": description,
