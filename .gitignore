@@ -1,3 +1,6 @@
+# Environment variables and sensitive data
+.env
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
