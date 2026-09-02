@@ -192,7 +192,7 @@ def handle_file(message):
 def procesar_siguiente_cuarentena(chat_id):
     lista_pendientes = productos_en_cuarentena.get(chat_id, [])
     if not lista_pendientes:
-        bot.send_message(chat_id, "🎉 Todos los productos de la factura han sido mapeados y guardados.")
+        bot.send_message(chat_id, "🎉 Todos los productos de la factura han sido mapeados y el stock actualizado.")
         return
 
     siguiente_item = lista_pendientes[0]
@@ -200,16 +200,22 @@ def procesar_siguiente_cuarentena(chat_id):
     try:
         conn = get_sql_connection()
         cursor = conn.cursor()
+        # El bot lee automáticamente todos los nuevos ingredientes (Miel, Atún, etc.)
         cursor.execute("SELECT DISTINCT producto FROM inventario ORDER BY producto ASC")
         filas = cursor.fetchall()
         cursor.close()
         conn.close()
         
-        markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+        # Ampliamos a 3 columnas para que la lista de 24 ingredientes sea más compacta en pantalla
+        markup = telebot.types.InlineKeyboardMarkup(row_width=3)
         botones = []
         for fila in filas:
             nombre_gen = fila[0]
-            botones.append(telebot.types.InlineKeyboardButton(text=nombre_gen, callback_data=f"map_{nombre_gen}"))
+            # Limitamos el callback_data a 30 caracteres para evitar errores en la API de Telegram
+            botones.append(telebot.types.InlineKeyboardButton(
+                text=nombre_gen, 
+                callback_data=f"map_{nombre_gen[:30]}"
+            ))
         
         markup.add(*botones)
         markup.add(telebot.types.InlineKeyboardButton(text="🚫 Ignorar este producto", callback_data="map_ignorar"))
@@ -217,9 +223,9 @@ def procesar_siguiente_cuarentena(chat_id):
         bot.send_message(
             chat_id, 
             f"⚠️ **Nuevo producto detectado en la factura:**\n"
-            f"🧾 Nombre original: `{siguiente_item['descripcion']}`\n"
-            f"⚖️ Cantidad: {siguiente_item['cantidad']} | 💶 Precio: {siguiente_item['precio']}€\n\n"
-            f"¿Con qué producto del inventario se corresponde?",
+            f"🧾 Original: `{siguiente_item['descripcion']}`\n"
+            f"⚖️ {siguiente_item['cantidad']} uds | 💶 {siguiente_item['precio']}€/ud\n\n"
+            f"¿Con qué ingrediente genérico del almacén se corresponde?",
             reply_markup=markup,
             parse_mode="Markdown"
         )
@@ -238,20 +244,16 @@ def callback_mapeo(call):
     siguiente_item = lista_pendientes[0]
     seleccion = call.data.replace('map_', '')
 
-    bot.answer_callback_query(call.id, f"Seleccionado: {seleccion}")
-
     if seleccion != 'ignorar':
         try:
             conn = get_sql_connection()
             cursor = conn.cursor()
             
-            # Guardar la equivalencia para futuras facturas
             cursor.execute(
                 "INSERT INTO equivalencias_proveedor (nombre_factura, nombre_inventario) VALUES (?, ?)", 
                 (siguiente_item['descripcion'], seleccion)
             )
             
-            # Actualizar el stock sumándolo al producto del inventario seleccionado
             cursor.execute(
                 """
                 UPDATE inventario 
@@ -281,10 +283,9 @@ def callback_mapeo(call):
             parse_mode="Markdown"
         )
 
-    # Eliminar el item procesado y continuar con el siguiente de la cuarentena
     productos_en_cuarentena[chat_id].pop(0)
     procesar_siguiente_cuarentena(chat_id)
 
 if __name__ == '__main__':
-    print("Bot avanzado con Azure SQL activo...")
+    print("Bot avanzado para la gestión de Mi Tosta operativo...")
     bot.infinity_polling()
