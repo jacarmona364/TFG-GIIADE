@@ -7,6 +7,11 @@ import plotly.express as px
 from datetime import datetime
 from dotenv import load_dotenv
 
+import psutil
+import datetime
+import threading
+import time
+
 # SDK de Azure (Para la gestión real de VMs)
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.compute import ComputeManagementClient
@@ -237,6 +242,80 @@ def show_azure_infrastructure():
             "Uptime": ["720 h", "144 h", "12 h", "-"]
         })
         st.dataframe(df_vms, use_container_width=True, hide_index=True)
+
+def estresar_cpu_background(segundos):
+    """Función que ejecuta cálculos intensivos para estresar la CPU."""
+    end_time = time.time() + segundos
+    while time.time() < end_time:
+        _ = [x**2 for x in range(10000)] # Operación matemática pesada
+
+def show_azure_infrastructure():
+    st.title(":material/router: Orquestación Cloud (Gemelo Digital VMSS)")
+    st.markdown("Gestión y simulación de la topología de escalado automático para picos de demanda.")
+    
+    # --- LECTURAS DE TELEMETRÍA ---
+    cpu_real = psutil.cpu_percent(interval=0.5)
+    ram_real = psutil.virtual_memory().percent
+    hora_actual = datetime.datetime.now().hour
+
+    with st.container(border=True):
+        st.markdown("### 📊 Telemetría del Nodo Principal (`vm-core-erp`)")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Carga de CPU", f"{cpu_real}%")
+        col2.metric("Uso de RAM", f"{ram_real}%")
+        col3.metric("Hora del Sistema", f"{hora_actual}:00")
+        
+        # --- SIMULADOR DE CARGA ARTIFICIAL ---
+        with col4:
+            st.markdown("<p style='color:#8B8F9E; font-size:0.85rem; font-weight:bold; margin-bottom: 2px;'>PRUEBA DE ESTRÉS</p>", unsafe_allow_html=True)
+            if st.button("🚀 Inyectar Sobrecarga", use_container_width=True):
+                # Lanza un hilo en segundo plano para saturar la CPU durante 10 segundos
+                hilo_estres = threading.Thread(target=estresar_cpu_background, args=(10,))
+                hilo_estres.start()
+                st.toast("Inyectando carga artificial masiva. La CPU se disparará en los próximos segundos...", icon="🔥")
+                time.sleep(1) # Pequeña pausa para que psutil capte la subida
+                st.rerun() # Fuerza recarga para actualizar la métrica de CPU inmediatamente
+
+    st.write("<br>", unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown("### :material/dns: Estado del Clúster (Auto-Escalado Híbrido)")
+        
+        # Base de datos fija: las máquinas que consumen tu cuota
+        infraestructura = [
+            {"Instancia ID": "vm-core-erp", "Rol": "Servidor Central & Base de Datos", "Estado": "🟢 Operativa", "Carga CPU": f"{cpu_real}%", "IP Interna": "10.0.0.4"},
+            {"Instancia ID": "vm-kds-cocina", "Rol": "Pantalla de Cocina (KDS)", "Estado": "🟢 Operativa", "Carga CPU": f"{random.randint(15, 30)}%", "IP Interna": "10.0.0.5"}
+        ]
+
+        # LÓGICA DE ESCALADO PREDICTIVO (Horas punta de comidas/cenas)
+        horas_punta = [13, 14, 15, 20, 21, 22]
+        
+        # LÓGICA DE ESCALADO REACTIVO (Por umbral de estrés de hardware)
+        UMBRAL_CPU = 75.0
+        
+        if cpu_real > UMBRAL_CPU:
+            st.error(f"⚠️ **ALERTA DE RENDIMIENTO:** Sobrecarga crítica detectada en el nodo central (>{UMBRAL_CPU}% CPU). El orquestador ha levantado un nodo de desbordamiento de emergencia.")
+            infraestructura.append(
+                {"Instancia ID": "vm-client-react", "Rol": "Desbordamiento (Reactivo)", "Estado": "🟢 Encendiendo...", "Carga CPU": "0%", "IP Interna": "10.0.0.6 (Dyn)"}
+            )
+        elif hora_actual in horas_punta:
+            st.info("⏱️ **ESCALADO PREDICTIVO ACTIVO:** Horario de alta concurrencia. El sistema ha pre-calentado nodos para absorber el tráfico de clientes de forma transparente.")
+            infraestructura.append(
+                {"Instancia ID": "vm-client-pred-01", "Rol": "Terminal Clientes (Predictivo)", "Estado": "🟢 Operativa", "Carga CPU": f"{random.randint(20, 35)}%", "IP Interna": "10.0.0.6 (Dyn)"}
+            )
+        else:
+            st.success("✅ **Infraestructura Estable:** El clúster base absorbe todo el tráfico actual. Resto de nodos apagados para optimización de costes (OPEX).")
+            infraestructura.append(
+                {"Instancia ID": "vm-client-pool", "Rol": "Terminal Clientes (Pool de Escalado)", "Estado": "⚪ Apagada (Standby)", "Carga CPU": "-", "IP Interna": "-"}
+            )
+
+        # Renderizado del dataframe
+        df_vms = pd.DataFrame(infraestructura)
+        st.dataframe(df_vms, use_container_width=True, hide_index=True)
+        
+        # Botón para refrescar métricas de forma manual
+        if st.button("🔄 Actualizar Telemetría", use_container_width=True):
+            st.rerun()
 
 # --- ESTRUCTURA PRINCIPAL (ENRUTADOR) ---
 if not st.session_state['logged_in']:
