@@ -8,7 +8,7 @@ load_dotenv()
 def get_sql_connection():
     return pyodbc.connect(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-        f"SERVER={os.getenv('AZURE_SQL_SERVER')};"
+        f"SERVER=tcp:{os.getenv('AZURE_SQL_SERVER')},1433;"
         f"DATABASE={os.getenv('AZURE_SQL_DATABASE')};"
         f"UID={os.getenv('AZURE_SQL_USER')};"
         f"PWD={os.getenv('AZURE_SQL_PASSWORD')};"

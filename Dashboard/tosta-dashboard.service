@@ -1,0 +1,12 @@
+[Unit]
+Description=Mi Tosta - ERP Dashboard
+After=network.target
+
+[Service]
+User=azureuser
+WorkingDirectory=/home/azureuser/TFG-GIIADE/Dashboard
+ExecStart=/home/azureuser/TFG-GIIADE/Dashboard/venv/bin/streamlit run app_analitica.py --server.port=8501 --server.address=0.0.0.0
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
