@@ -8,9 +8,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 import psutil
-import datetime
 import threading
 import time
+import random
 
 # SDK de Azure (Para la gestión real de VMs)
 from azure.identity import DefaultAzureCredential
@@ -49,7 +49,7 @@ st.markdown("""
 def get_sql_connection():
     return pyodbc.connect(
         f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-        f"SERVER={os.getenv('AZURE_SQL_SERVER')};"
+        f"SERVER=tcp:{os.getenv('AZURE_SQL_SERVER')},1433;"
         f"DATABASE={os.getenv('AZURE_SQL_DATABASE')};"
         f"UID={os.getenv('AZURE_SQL_USER')};"
         f"PWD={os.getenv('AZURE_SQL_PASSWORD')};"
@@ -181,68 +181,6 @@ def show_inventario():
         else:
             st.warning("No se pudo cargar el inventario desde Azure.")
 
-def show_azure_infrastructure():
-    st.title(":material/router: Arquitectura Cloud por Microservicios (Azure)")
-    st.markdown("Gestión de la topología de máquinas virtuales orientadas al negocio de hostelería.")
-    
-    with st.container(border=True):
-        st.markdown("### 🖥️ Topología de Nodos del Restaurante")
-        st.info(
-            "**Roles de Infraestructura:**\n\n"
-            "1. **`vm-core-erp`**: Siempre activa. Aloja la base de datos Azure SQL, el backend de gestión y el bot de Telegram OCR.\n"
-            "2. **`vm-kds-cocina`**: Siempre activa. Dedicated node que ejecuta el panel de comandas en tiempo real para el personal de cocina.\n"
-            "3. **`vm-client-node-XX`**: Nodos dinámicos de la carta digital de clientes. Se despliegan bajo demanda (auto-escalado) según las puntas de afluencia."
-        )
-
-    st.write("<br>", unsafe_allow_html=True)
-
-    with st.container(border=True):
-        st.markdown("### ⚡ Panel de Escalado Dinámico (Pedidos de Clientes)")
-        
-        c_op1, c_op2 = st.columns(2)
-        with c_op1:
-            st.markdown("#### 🚀 Desplegar Nodo de Pedidos")
-            node_name = st.text_input("Identificador del Nodo", value="vm-client-node-02")
-            if st.button("Desplegar Nodo para Clientes", type="primary", use_container_width=True):
-                try:
-                    credential = DefaultAzureCredential()
-                    sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
-                    rg_name = os.getenv("AZURE_RESOURCE_GROUP", "MiTosta-RG")
-                    
-                    compute_client = ComputeManagementClient(credential, sub_id)
-                    st.toast(f"Iniciando aprovisionamiento en Azure para {node_name}...", icon="☁️")
-                    st.success(f"✅ Nodo de clientes `{node_name}` desplegado y añadido al balanceador de carga con éxito.")
-                except Exception as e:
-                    st.error(f"Error al conectar con la API de Azure Compute: {e}")
-
-        with c_op2:
-            st.markdown("#### 🛑 Apagar Nodo de Pedidos Excedente")
-            node_target = st.selectbox("Seleccionar Nodo de Clientes a Liberar", ["vm-client-node-01", "vm-client-node-02"])
-            if st.button("Desasignar Nodo Inactivo", use_container_width=True):
-                try:
-                    credential = DefaultAzureCredential()
-                    sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
-                    rg_name = os.getenv("AZURE_RESOURCE_GROUP", "MiTosta-RG")
-                    
-                    compute_client = ComputeManagementClient(credential, sub_id)
-                    st.warning(f"⚡ Nodo `{node_target}` desasignado correctamente. Optimización de costes OPEX aplicada.")
-                except Exception as e:
-                    st.error(f"Error de desasignación en Azure: {e}")
-
-    st.write("<br>", unsafe_allow_html=True)
-    
-    with st.container(border=True):
-        st.markdown("### :material/dns: Estado Actual del Clúster Cloud")
-        df_vms = pd.DataFrame({
-            "Instancia ID": ["vm-core-erp", "vm-kds-cocina", "vm-client-node-01", "vm-client-node-02"],
-            "Rol Funcional": ["Base de Datos & Bot OCR", "KDS Pantalla Cocina", "Servidor Web Clientes (T1)", "Servidor Web Clientes (T2)"],
-            "Estado": ["Running (Core)", "Running (Dedicated)", "Running (Auto-scale)", "Deallocated (Standby)"],
-            "CPU Promedio": ["18 %", "32 %", "64 %", "0 %"],
-            "IP Privada": ["10.0.0.4", "10.0.0.5", "10.0.0.6", "-"],
-            "Uptime": ["720 h", "144 h", "12 h", "-"]
-        })
-        st.dataframe(df_vms, use_container_width=True, hide_index=True)
-
 def estresar_cpu_background(segundos):
     """Función que ejecuta cálculos intensivos para estresar la CPU."""
     end_time = time.time() + segundos
@@ -256,7 +194,7 @@ def show_azure_infrastructure():
     # --- LECTURAS DE TELEMETRÍA ---
     cpu_real = psutil.cpu_percent(interval=0.5)
     ram_real = psutil.virtual_memory().percent
-    hora_actual = datetime.datetime.now().hour
+    hora_actual = datetime.now().hour
 
     with st.container(border=True):
         st.markdown("### 📊 Telemetría del Nodo Principal (`vm-core-erp`)")
