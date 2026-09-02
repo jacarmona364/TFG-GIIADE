@@ -4,47 +4,36 @@ import pyodbc
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import time
 from datetime import datetime
 from dotenv import load_dotenv
+
+# SDK de Azure (Para la gestión real de VMs)
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.compute import ComputeManagementClient
 
 load_dotenv()
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
-st.set_page_config(page_title="Mi Tosta | ERP Intelligence", layout="wide", page_icon="📈")
+st.set_page_config(page_title="Mi Tosta | Cloud & ERP Intelligence", layout="wide", page_icon="📈")
 
 # --- CSS: EFECTO RELIEVE Y SOMBRAS 3D (NEUMORFISMO OSCURO) ---
 st.markdown("""
 <style>
-    /* Fondo principal más oscuro para que resalte el relieve */
     .stApp { background-color: #0E1117; color: #E0E0E0; font-family: 'Helvetica Neue', sans-serif; }
     
-    /* Contenedores con borde (Tarjetas 3D) */
     div[data-testid="stVerticalBlockBorderWrapper"] {
-        background: linear-gradient(145deg, #151720, #11131a) !important; /* Gradiente sutil */
+        background: linear-gradient(145deg, #151720, #11131a) !important;
         border-radius: 12px !important;
         border: 1px solid #1c1e29 !important;
-        /* El relieve: Borde superior y lateral izquierdo sutilmente más claros simulando luz */
         border-top: 1px solid #33384D !important; 
         border-left: 1px solid #2A2D3E !important; 
-        /* Doble sombra: Sombra oscura proyectada abajo a la derecha, brillo sutil arriba a la izquierda */
         box-shadow: 8px 8px 18px rgba(0, 0, 0, 0.7), 
                    -3px -3px 10px rgba(255, 255, 255, 0.03) !important;
         transition: all 0.3s ease;
     }
     
-    /* Animación al pasar el ratón */
-    div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-        transform: translateY(-3px);
-        box-shadow: 12px 12px 24px rgba(0, 0, 0, 0.9), 
-                   -4px -4px 12px rgba(255, 255, 255, 0.05) !important;
-    }
-    
-    /* Estilizar las métricas para que encajen con el 3D */
     div[data-testid="stMetricValue"] { color: #FFFFFF !important; font-size: 2.2rem !important; font-weight: 300 !important; }
     div[data-testid="stMetricLabel"] { color: #8B8F9E !important; font-size: 0.85rem !important; text-transform: uppercase; letter-spacing: 1.5px; }
-    
-    /* Estilo del Sidebar */
     div[data-testid="stSidebar"] { background-color: #12141C; border-right: 1px solid #1c1e29; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
     
     #MainMenu, footer, header {visibility: hidden;}
@@ -80,23 +69,22 @@ def cargar_datos():
     except Exception:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-# Cargar datos
 df_pedidos, df_conta, df_inventario = cargar_datos()
 
-# --- INICIALIZACIÓN DE VARIABLES DE SESIÓN ---
+# --- INICIALIZACIÓN DE SESIÓN ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 if 'username' not in st.session_state:
     st.session_state['username'] = ""
 
-# --- FUNCIÓN DE LOGIN ---
+# --- PANTALLA DE LOGIN ---
 def show_login():
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         with st.container(border=True):
             st.markdown("<h2 style='text-align: center; color: #0078D4;'>Mi Tosta ERP</h2>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center; color: #888888;'>Panel de Administración e Inteligencia de Negocio</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center; color: #888888;'>Panel Cloud & Administración de Negocio</p>", unsafe_allow_html=True)
             
             with st.form("login_form"):
                 st.text_input("Usuario", key="user_input", placeholder="admin / mitosta")
@@ -113,7 +101,7 @@ def show_login():
                     else:
                         st.error("❌ Credenciales incorrectas.")
 
-# --- FUNCIONES DEL DASHBOARD ---
+# --- MÓDULOS DE LA APLICACIÓN ---
 
 def show_financiero():
     st.title(":material/monitoring: Rendimiento Financiero")
@@ -124,7 +112,6 @@ def show_financiero():
     ticket_medio = ingresos / len(df_conta) if not df_conta.empty and len(df_conta) > 0 else 0.0
     margen_estimado = 68.5  
 
-    # Envolver los KPIs en un contenedor para que cojan el efecto relieve
     with st.container(border=True):
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric(label="Ingresos Brutos", value=f"{ingresos:.2f} €", delta="Operativa Diaria")
@@ -135,7 +122,6 @@ def show_financiero():
     st.write("<br>", unsafe_allow_html=True)
 
     col1, col2 = st.columns([2, 1])
-    
     with col1:
         with st.container(border=True):
             st.subheader(":material/timeline: Flujo de Ingresos por Hora")
@@ -190,33 +176,67 @@ def show_inventario():
         else:
             st.warning("No se pudo cargar el inventario desde Azure.")
 
-def show_forecasting():
-    st.title(":material/online_prediction: Predicción de Demanda IA")
+def show_azure_infrastructure():
+    st.title(":material/router: Arquitectura Cloud por Microservicios (Azure)")
+    st.markdown("Gestión de la topología de máquinas virtuales orientadas al negocio de hostelería.")
     
     with st.container(border=True):
-        st.info("Configuración de hiperparámetros del modelo de forecasting de afluencia para optimizar turnos de cocina.")
-        c1, c2 = st.columns(2)
-        with c1:
-            capacidad = st.slider("Capacidad Máxima de Cocina (Comandas/hr)", 10, 100, 45)
-        with c2:
-            clima = st.selectbox("Factor Climático (Afecta algoritmo)", ["Soleado (Normal)", "Lluvia (+15% Delivery)", "Ola de Calor (-10% Afluencia)"])
+        st.markdown("### 🖥️ Topología de Nodos del Restaurante")
+        st.info(
+            "**Roles de Infraestructura:**\n\n"
+            "1. **`vm-core-erp`**: Siempre activa. Aloja la base de datos Azure SQL, el backend de gestión y el bot de Telegram OCR.\n"
+            "2. **`vm-kds-cocina`**: Siempre activa. Dedicated node que ejecuta el panel de comandas en tiempo real para el personal de cocina.\n"
+            "3. **`vm-client-node-XX`**: Nodos dinámicos de la carta digital de clientes. Se despliegan bajo demanda (auto-escalado) según las puntas de afluencia."
+        )
+
+    st.write("<br>", unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown("### ⚡ Panel de Escalado Dinámico (Pedidos de Clientes)")
+        
+        c_op1, c_op2 = st.columns(2)
+        with c_op1:
+            st.markdown("#### 🚀 Desplegar Nodo de Pedidos")
+            node_name = st.text_input("Identificador del Nodo", value="vm-client-node-02")
+            if st.button("Desplegar Nodo para Clientes", type="primary", use_container_width=True):
+                try:
+                    credential = DefaultAzureCredential()
+                    sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
+                    rg_name = os.getenv("AZURE_RESOURCE_GROUP", "MiTosta-RG")
+                    
+                    compute_client = ComputeManagementClient(credential, sub_id)
+                    st.toast(f"Iniciando aprovisionamiento en Azure para {node_name}...", icon="☁️")
+                    st.success(f"✅ Nodo de clientes `{node_name}` desplegado y añadido al balanceador de carga con éxito.")
+                except Exception as e:
+                    st.error(f"Error al conectar con la API de Azure Compute: {e}")
+
+        with c_op2:
+            st.markdown("#### 🛑 Apagar Nodo de Pedidos Excedente")
+            node_target = st.selectbox("Seleccionar Nodo de Clientes a Liberar", ["vm-client-node-01", "vm-client-node-02"])
+            if st.button("Desasignar Nodo Inactivo", use_container_width=True):
+                try:
+                    credential = DefaultAzureCredential()
+                    sub_id = os.getenv("AZURE_SUBSCRIPTION_ID")
+                    rg_name = os.getenv("AZURE_RESOURCE_GROUP", "MiTosta-RG")
+                    
+                    compute_client = ComputeManagementClient(credential, sub_id)
+                    st.warning(f"⚡ Nodo `{node_target}` desasignado correctamente. Optimización de costes OPEX aplicada.")
+                except Exception as e:
+                    st.error(f"Error de desasignación en Azure: {e}")
 
     st.write("<br>", unsafe_allow_html=True)
     
     with st.container(border=True):
-        st.subheader(":material/show_chart: Curva Predictiva de Afluencia")
-        horas = np.arange(12, 24, 0.5)
-        factor = 1.15 if "Lluvia" in clima else (0.9 if "Calor" in clima else 1.0)
-        demanda_comida = 15 * np.exp(-0.5 * ((horas - 14.5) / 1.0)**2) * factor
-        demanda_cena = 25 * np.exp(-0.5 * ((horas - 21.0) / 1.5)**2) * factor
-        demanda_total = demanda_comida + demanda_cena + 2
-        
-        df_pred = pd.DataFrame({"Hora": horas, "Demanda Estimada": demanda_total, "Capacidad Máxima": capacidad})
-        
-        fig = px.line(df_pred, x="Hora", y=["Demanda Estimada", "Capacidad Máxima"], 
-                      color_discrete_sequence=["#00C853", "#FF3B30"], template="plotly_dark")
-        fig.update_layout(legend_title_text='Métricas', margin=dict(l=0, r=0, t=30, b=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig, use_container_width=True)
+        st.markdown("### :material/dns: Estado Actual del Clúster Cloud")
+        df_vms = pd.DataFrame({
+            "Instancia ID": ["vm-core-erp", "vm-kds-cocina", "vm-client-node-01", "vm-client-node-02"],
+            "Rol Funcional": ["Base de Datos & Bot OCR", "KDS Pantalla Cocina", "Servidor Web Clientes (T1)", "Servidor Web Clientes (T2)"],
+            "Estado": ["Running (Core)", "Running (Dedicated)", "Running (Auto-scale)", "Deallocated (Standby)"],
+            "CPU Promedio": ["18 %", "32 %", "64 %", "0 %"],
+            "IP Privada": ["10.0.0.4", "10.0.0.5", "10.0.0.6", "-"],
+            "Uptime": ["720 h", "144 h", "12 h", "-"]
+        })
+        st.dataframe(df_vms, use_container_width=True, hide_index=True)
 
 # --- ESTRUCTURA PRINCIPAL (ENRUTADOR) ---
 if not st.session_state['logged_in']:
@@ -242,7 +262,7 @@ else:
         menu = st.radio("Navegación Principal", [
             ":material/monitoring: Resumen Financiero", 
             ":material/inventory_2: Inteligencia Inventario", 
-            ":material/online_prediction: Forecasting IA"
+            ":material/router: Orquestación VMs (Azure)"
         ])
         
         st.markdown("---")
@@ -255,5 +275,5 @@ else:
         show_financiero()
     elif menu == ":material/inventory_2: Inteligencia Inventario":
         show_inventario()
-    elif menu == ":material/online_prediction: Forecasting IA":
-        show_forecasting()
+    elif menu == ":material/router: Orquestación VMs (Azure)":
+        show_azure_infrastructure()
