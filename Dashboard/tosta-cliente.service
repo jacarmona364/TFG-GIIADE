@@ -1,0 +1,12 @@
+[Unit]
+Description=Mi Tosta - Cliente Cocina Dashboard
+After=network.target
+
+[Service]
+User=azureuser
+WorkingDirectory=/home/azureuser/TFG-GIIADE/Cliente
+ExecStart=/home/azureuser/TFG-GIIADE/Cliente/venv/bin/streamlit run app_cliente.py --server.port=8502 --server.address=0.0.0.0
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
