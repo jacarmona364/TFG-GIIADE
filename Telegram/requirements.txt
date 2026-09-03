@@ -1,0 +1,6 @@
+streamlit
+pandas
+pyTelegramBotAPI
+azure-ai-formrecognizer
+pyodbc
+python-dotenv
