@@ -81,11 +81,11 @@ python bot_main.py
 
 ---
 
-## 🎓 Créditos del Proyecto
+### **Trabajo Fin de Grado - Doble Grado GII / ADE**
+> **Autor:** José Antonio Carmona Molina <br>
+> **Tutor:** Carlos Navarro Moral <br>
+---
 
-| Rol | Nombre |
-| :--- | :--- |
-| **Autor** | José Antonio Carmona Molina |
-| **Tutor** | Carlos Navarro Moral |
-| **Institución** | Escuela Técnica Superior de Ingenierías Informática y de Telecomunicación (ETSIIT) - UGR |
-
+<div align="center">
+  <p>🏫 <i>Escuela Técnica Superior de Ingenierías Informática y de Telecomunicación (ETSIIT) - Universidad de Granada</i></p>
+</div>
