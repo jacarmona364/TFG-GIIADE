@@ -49,5 +49,43 @@ Para reproducir o auditar el entorno tecnológico en local, se requiere **Python
 
 **1. Clonar el repositorio**
 ```bash
-git clone [https://github.com/tu-usuario/TFG-GIIADE.git](https://github.com/tu-usuario/TFG-GIIADE.git)
+git clone [https://github.com/jacarmona364/TFG-GIIADE.git](https://github.com/jacarmona364/TFG-GIIADE.git)
 cd TFG-GIIADE
+```
+**2. Configuración de Entornos Virtuales**
+```bash
+# Ejemplo para el módulo Dashboard (Sistemas UNIX)
+cd Dashboard
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+**3. Variables de Entorno (.env)**
+```bash
+# Crea un archivo .env en la raíz del proyecto con las credenciales de los servicios Cloud:
+TELEGRAM_BOT_TOKEN="tu_token_generado_por_botfather"
+AZURE_FORM_RECOGNIZER_ENDPOINT="[https://tu-recurso.cognitiveservices.azure.com/](https://tu-recurso.cognitiveservices.azure.com/)"
+AZURE_FORM_RECOGNIZER_KEY="tu_clave_de_api_cognitiva"
+AZURE_SQL_CONNECTION_STRING="Driver={ODBC Driver 18 for SQL Server}; Server..."
+```
+**4. Ejecución de Interfaces**
+```bash
+# Levantar el KDS / Dashboard Analítico
+cd Dashboard
+streamlit run app_analitica.py / app_cliente.py / app_cocina.py
+
+# Iniciar el agente logístico
+cd Telegram
+python bot_main.py
+```
+
+---
+
+## 🎓 Créditos del Proyecto
+
+| Rol | Nombre |
+| :--- | :--- |
+| **Autor** | José Antonio Carmona Molina |
+| **Tutor** | Carlos Navarro Moral |
+| **Institución** | Escuela Técnica Superior de Ingenierías Informática y de Telecomunicación (ETSIIT) - UGR |
+
